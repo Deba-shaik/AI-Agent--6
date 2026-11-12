@@ -1,0 +1,173 @@
+{
+  "name": "Topic 06 – Building Custom Tools via Workflow, Code, and API Nodes",
+  "nodes": [
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.5,
+      "position": [
+        -320,
+        -32
+      ],
+      "id": "630d7a7b-4ccd-4a0b-90b4-633e03bec2e9",
+      "name": "When chat message received",
+      "webhookId": "c257cf1a-2622-4ac0-9925-d5f761524cf5"
+    },
+    {
+      "parameters": {
+        "options": {
+          "systemMessage": "You are a member profile support assistant.\n\nOPERATIONAL DIRECTIVES:\n1. If a user shares their customer ID, call fetch_profile_tool to retrieve their name and company details.\n2. If the user provides a birthdate and requests an age calculation, call calculate_age_tool.\n3. Combine the outputs of both tools into a clear, polite response.\n4. Do not invent customer details.\n5. If a tool fails, explain the failure clearly."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        -96,
+        -32
+      ],
+      "id": "2cf9fb79-e86d-4782-b8c9-8058ea7dc5b0",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "custom-qwen-agent",
+          "mode": "list",
+          "cachedResultName": "custom-qwen-agent"
+        },
+        "responsesApiEnabled": false,
+        "options": {
+          "temperature": 0
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        -240,
+        176
+      ],
+      "id": "5291d79a-e43a-4a80-aa5d-e1b1b723c7dc",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "vargawTX6deq1kgr",
+          "name": "OpenAI account 20"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.4,
+      "position": [
+        -80,
+        176
+      ],
+      "id": "30486c3a-a19c-4265-bdc4-f9b4ec98c7d7",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "description": "Use this tool to calculate a user's exact age from their birthdate string. The date input parameter must be formatted as YYYY-MM-DD.",
+        "jsCode": "\nconst birthdate = query.trim();\n\nif (!/^\\d{4}-\\d{2}-\\d{2}$/.test(birthdate)) {\n  return \"Error: Birthdate must be in YYYY-MM-DD format.\";\n}\n\nconst birthDate = new Date(birthdate + \"T00:00:00Z\");\nconst today = new Date();\n\nif (\n  isNaN(birthDate.getTime()) ||\n  birthDate.toISOString().slice(0, 10) !== birthdate ||\n  birthDate > today\n) {\n  return \"Error: Invalid birthdate.\";\n}\n\nlet age = today.getUTCFullYear() - birthDate.getUTCFullYear();\n\nconst monthDifference =\n  today.getUTCMonth() - birthDate.getUTCMonth();\n\nif (\n  monthDifference < 0 ||\n  (monthDifference === 0 &&\n    today.getUTCDate() < birthDate.getUTCDate())\n) {\n  age--;\n}\n\nreturn `Age calculated successfully: ${age} years old.`;\n"
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolCode",
+      "typeVersion": 1.3,
+      "position": [
+        256,
+        176
+      ],
+      "id": "92b662fe-cb95-485f-bc76-b3c1d8e7f32e",
+      "name": "calculate_age_tool"
+    },
+    {
+      "parameters": {
+        "toolDescription": "Retrieve a customer's name, email, and company using their customer ID",
+        "url": "={{ 'https://jsonplaceholder.typicode.com/users/' + $fromAI('customer_id', 'Numeric customer ID to look up', 'number') }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.5,
+      "position": [
+        64,
+        176
+      ],
+      "id": "3009c631-542d-4b5f-978d-f5c0589f79fe",
+      "name": "fetch_profile_tool"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "calculate_age_tool": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "fetch_profile_tool": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "5afd0001-4d1c-4e66-91c8-ab76cb393c72",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "a03c7678428ef19ededbf912f16f7d5798ec7b9ab4c17f2a2def6a9e791e7215"
+  },
+  "nodeGroups": [],
+  "id": "nVkXArK2BYpLJraJ",
+  "tags": []
+}
